@@ -1,4 +1,7 @@
 from matplotlib import pyplot as plt
+import numpy as np
+import itertools
+from math import isclose
 
 import play_game as game
 import random
@@ -21,32 +24,45 @@ choices = ['C', 'D'] # Cooperate or Defect
 # ii) Rather than considering a memory of length one, you could increase the memory length - for example, is a memory of 2 was used, we would have a genotype of length 5 ( and hence a strategy space of 2^5). This would be what to do on the first move, what to do following CC, CD, DC, DD by the opponent. This can be generalised. One could also include one's own moves too in the memory condition.
 
 
-# # Create initial random population
-# def initialize_population(pop_size):
-#     return [Strategy() for _ in range(pop_size)]
-
-import numpy as np
 
 class IPDGenotype:
     def __init__(self, memory_depth=2):
         self.memory_depth = memory_depth
-        self.strategy_length = 2 ** (memory_depth * 2)  # 2^(2*memory_depth) - all possible histories
-        self.strategy = np.random.rand(self.strategy_length)  # Probabilities of cooperation (0 to 1)
+        self.strategy_length = (memory_depth ** 2) + 3  # (2^2) + 1 + 2 for memory=2
+        self.strategy = np.random.rand(self.strategy_length)  # Probabilities of cooperating
+
+        # Generate all history combinations
+        self.history_map = self.create_history_map()
+
+    def create_history_map(self):
+        """Creates a mapping of history states to indices in the strategy array."""
+        history_map = {}
+
+        # No history case
+        history_map[""] = 0
+
+        # Single move history cases
+        history_map["C"] = 1
+        history_map["D"] = 2
+
+        # Full history cases (e.g., CC, CD, DC, DD for memory=2)
+        all_combos = itertools.product("CD", repeat=self.memory_depth)  # Generate all history pairs
+        index = 3  # Start after no-history and single-history cases
+
+        for combo in all_combos:
+            history_map["".join(combo)] = index
+            index += 1
+
+        return history_map
+
+    def encode_history(self, opponent_history):
+        """Encodes opponent's history into a strategy index."""
+        history_str = "".join(move for move in opponent_history[-self.memory_depth:])
+        return self.history_map.get(history_str, 0)  # Default to 'no history' if not found
 
     def play(self, opponent_history):
         """Decide whether to cooperate (C) or defect (D) based on opponent's past moves."""
-        if len(opponent_history) == 0:
-            history_index = 0  # Default to first entry if not enough history
-        elif len(opponent_history) < self.memory_depth:
-            history_index = 0  # Default to first entry if not enough history
-
-            # history_index = int("".join('0' if move == 'C' else '1' for move in opponent_history[::-1]), 2)
-            # If there isn't enough history, work with what we have
-            # for i in range(len(opponent_history)):
-            #     history_index += 2 ** i if opponent_history[i] == 'C' else 0
-        else:
-            history_index = int("".join('0' if move == 'C' else '1' for move in opponent_history[-self.memory_depth:]), 2)
-
+        history_index = self.encode_history(opponent_history[-self.memory_depth:])
         return 'C' if np.random.rand() < self.strategy[history_index] else 'D'  # Probabilistic decision
 
 
@@ -90,9 +106,6 @@ class EvolutionaryIPD:
         diversity_scores = []
 
         for gen in range(generations):
-            fitness_scores.append(max([self.evaluate_fitness(agent) for agent in self.population]))
-            diversity_scores.append(calculate_diversity(self.population))  # Track diversity
-
             new_population = []
             for _ in range(self.population_size):
                 parent1 = self.tournament_selection()
@@ -102,6 +115,15 @@ class EvolutionaryIPD:
                 new_population.append(child)
 
             self.population = new_population
+            best_fitness = max([self.evaluate_fitness(agent) for agent in self.population])
+            fitness_scores.append(best_fitness)
+            diversity_scores.append(calculate_diversity(self.population))  # Track diversity
+
+            # Early stopping if no improvement
+            if len(fitness_scores) > 50:
+                if isclose(best_fitness, fitness_scores[-49], rel_tol=0.0025):
+                    print(f'Stopping early at generation {gen} due to no improvement in fitness.')
+                    break
 
         return max(self.population, key=lambda agent: self.evaluate_fitness(agent)), fitness_scores, diversity_scores
 
@@ -146,10 +168,19 @@ class StrategyWrapper:
 fixed_strategies = [game.always_cooperate, game.always_defect, game.tit_for_tat, game.adaptive_strategy]
 best_agents = []
 
+
+# # Example usage
+# agent = IPDGenotype(memory_depth=2)
+# print("History Mapping:", agent.history_map)  # Check if history encoding is correct
+#
+# opponent_history = ["C", "D"]  # Example history
+# decision = agent.play(opponent_history)
+# print(f"Agent decides to {'Cooperate' if decision == 'C' else 'Defect'}")
+
 for strat in fixed_strategies:
     print("Fixed strategy: " + str(strat.__name__))
     evolution = EvolutionaryIPD(population_size=50, memory_depth=3, opponentStrategy=strat)
-    best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=30)
+    best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=300)
     best_agents.append([best_agent, strat.__name__])
 
     plot_diversity(fitness_scores, diversity_scores, strat)
