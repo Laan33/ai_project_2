@@ -38,10 +38,12 @@ class IPDGenotype:
         if len(opponent_history) == 0:
             history_index = 0  # Default to first entry if not enough history
         elif len(opponent_history) < self.memory_depth:
-            history_index = int("".join('0' if move == 'C' else '1' for move in opponent_history[::-1]), 2)
+            history_index = 0  # Default to first entry if not enough history
+
+            # history_index = int("".join('0' if move == 'C' else '1' for move in opponent_history[::-1]), 2)
             # If there isn't enough history, work with what we have
-            for i in range(len(opponent_history)):
-                history_index += 2 ** i if opponent_history[i] == 'C' else 0
+            # for i in range(len(opponent_history)):
+            #     history_index += 2 ** i if opponent_history[i] == 'C' else 0
         else:
             history_index = int("".join('0' if move == 'C' else '1' for move in opponent_history[-self.memory_depth:]), 2)
 
@@ -84,17 +86,13 @@ class EvolutionaryIPD:
                 agent.strategy[i] = np.clip(agent.strategy[i], 0, 1)
 
     def evolve(self, generations=50):
-        """Runs the evolutionary process over multiple generations."""
         fitness_scores = []
+        diversity_scores = []
+
         for gen in range(generations):
-            # print(f"Generation {gen + 1}")
-
-            # Evaluate fitness
-            # fitness_scores = [self.evaluate_fitness(agent) for agent in self.population]
             fitness_scores.append(max([self.evaluate_fitness(agent) for agent in self.population]))
+            diversity_scores.append(calculate_diversity(self.population))  # Track diversity
 
-
-            # Select the next generation
             new_population = []
             for _ in range(self.population_size):
                 parent1 = self.tournament_selection()
@@ -103,19 +101,38 @@ class EvolutionaryIPD:
                 self.mutate(child)
                 new_population.append(child)
 
-            # print(f"Best fitness: {max(fitness_scores)}")
-            # print(f"Genotype: {new_population[fitness_scores.index(max(fitness_scores))].strategy}")
             self.population = new_population
-        return max(self.population, key=lambda agent: self.evaluate_fitness(agent)), fitness_scores
 
+        return max(self.population, key=lambda agent: self.evaluate_fitness(agent)), fitness_scores, diversity_scores
+
+def calculate_diversity(population):
+    """Measure diversity using standard deviation of strategy probabilities."""
+    strategies = np.array([agent.strategy for agent in population])
+    return np.mean(np.std(strategies, axis=0))  # Average standard deviation across genes
 
 # Plot fitness progress over generations
 def plot_fitness_over_time(fitness_scores, opponentStrategy):
     plt.plot(fitness_scores)
     plt.xlabel("Generation")
     plt.ylabel("Fitness")
-    plt.title("Fitness over Time, Opponent: " + str(opponentStrategy))
+    plt.title("Fitness over Time, Opponent: " + str(opponentStrategy.__name__))
     plt.show()
+
+def plot_diversity(fitness_scores, diversity_scores, opponentStrategy):
+    fig, ax1 = plt.subplots()
+
+    ax1.set_xlabel("Generation")
+    ax1.set_ylabel("Fitness", color='tab:blue')
+    ax1.plot(fitness_scores, label="Fitness", color='tab:blue')
+
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Diversity", color='tab:red')
+    ax2.plot(diversity_scores, label="Diversity", color='tab:red')
+
+    plt.title("Fitness and Diversity Over Time (Opponent: " + str(opponentStrategy.__name__) + ")")
+    fig.tight_layout()
+    plt.show()
+
 
 # Define a wrapper class for the agent's play function
 class StrategyWrapper:
@@ -130,22 +147,24 @@ fixed_strategies = [game.always_cooperate, game.always_defect, game.tit_for_tat,
 best_agents = []
 
 for strat in fixed_strategies:
-    print("Fixed strategy: " + str(strat))
+    print("Fixed strategy: " + str(strat.__name__))
     evolution = EvolutionaryIPD(population_size=50, memory_depth=3, opponentStrategy=strat)
-    best_agent, fitness_scores = evolution.evolve(generations=30)
-    best_agents.append(best_agent)
+    best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=30)
+    best_agents.append([best_agent, strat.__name__])
 
-    plot_fitness_over_time(fitness_scores, opponentStrategy=strat)
+    plot_diversity(fitness_scores, diversity_scores, strat)
 
     agentScore, fixedScore, _, _ = play_game(strategy1=best_agent, strategy2=StrategyWrapper(strat), num_rounds=50)
     print(f"Agent score: {agentScore}, Strat score: {fixedScore}")
     print(f"Best agent genome: {best_agent.strategy}")
 
+
+print("\nTesting the agents on all the fixed strategies")
 for best_agent in best_agents:
-    print("Testing the agents on all the fixed strategies")
+    print("--------------\n")
     for strat in fixed_strategies:
-        print("Fixed strategy: " + str(strat))
-        agentScore, fixedScore, _, _ = play_game(strategy1=best_agent, strategy2=StrategyWrapper(strat), num_rounds=50)
-        print(f"Agent score: {agentScore}, Strat score: {fixedScore}")
+        print(f"Agent opponent: {best_agent[1]} Fixed strategy: {str(strat.__name__)}")
+        agentScore, fixedScore, _, _ = play_game(strategy1=best_agent[0], strategy2=StrategyWrapper(strat), num_rounds=50)
+        print(f"Agent score: {agentScore}, Strat score: {fixedScore}\n")
 
 
