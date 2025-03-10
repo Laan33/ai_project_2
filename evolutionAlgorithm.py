@@ -1,5 +1,10 @@
-import play_game
+from matplotlib import pyplot as plt
+
+import play_game as game
 import random
+
+from play_game import play_game
+
 """
 Evolutionary Algorithm for the Prisoner's Dilemma.
 • Population size: 50-100 individuals
@@ -25,13 +30,18 @@ import numpy as np
 class IPDGenotype:
     def __init__(self, memory_depth=2):
         self.memory_depth = memory_depth
-        self.strategy_length = 2 ** (memory_depth * 2)  # Considering opponent's last moves (CC, CD, DC, DD)
+        self.strategy_length = 2 ** (memory_depth * 2)  # 2^(2*memory_depth) - all possible histories
         self.strategy = np.random.rand(self.strategy_length)  # Probabilities of cooperation (0 to 1)
 
     def play(self, opponent_history):
         """Decide whether to cooperate (C) or defect (D) based on opponent's past moves."""
-        if len(opponent_history) < self.memory_depth:
+        if len(opponent_history) == 0:
             history_index = 0  # Default to first entry if not enough history
+        elif len(opponent_history) < self.memory_depth:
+            history_index = int("".join('0' if move == 'C' else '1' for move in opponent_history[::-1]), 2)
+            # If there isn't enough history, work with what we have
+            for i in range(len(opponent_history)):
+                history_index += 2 ** i if opponent_history[i] == 'C' else 0
         else:
             history_index = int("".join('0' if move == 'C' else '1' for move in opponent_history[-self.memory_depth:]), 2)
 
@@ -39,47 +49,50 @@ class IPDGenotype:
 
 
 class EvolutionaryIPD:
-    def __init__(self, population_size=50, memory_depth=2, mutation_rate=0.1):
+    def __init__(self, population_size=50, memory_depth=2, mutation_rate=0.1, opponentStrategy = game.always_defect):
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.population = [IPDGenotype(memory_depth) for _ in range(population_size)]
+        self.opponentStrategy = opponentStrategy
+        # self.fixed_strategies = [game.always_cooperate, game.always_defect, game.tit_for_tat, game.adaptive_strategy]
 
-    def evaluate_fitness(self, agent, opponent_pool):
-        """Plays against multiple opponents and returns a fitness score."""
+    def evaluate_fitness(self, agent):
+        """Plays against fixed strategies and returns total score."""
         total_score = 0
-        for opponent in opponent_pool:
-            agent_wrapper = StrategyWrapper(agent.play)
-            opponent_wrapper = StrategyWrapper(opponent.play)
-            agent_score, _, _, _ = play_game.play_game(agent_wrapper, opponent_wrapper, num_rounds=15)
+        for _ in range(3):
+            agent_score, _, _, _ = game.play_game(agent, StrategyWrapper(self.opponentStrategy), num_rounds=50)
             total_score += agent_score
         return total_score
 
-    def tournament_selection(self, k=5):
+    def tournament_selection(self, k=6):
         """Selects the best agent from a random subset of the population."""
         tournament = random.sample(self.population, k)
-        return max(tournament, key=lambda agent: self.evaluate_fitness(agent, self.population))
+        return max(tournament, key=lambda agent: self.evaluate_fitness(agent))
 
     def crossover(self, parent1, parent2):
-        """Performs uniform crossover between two parents to create an offspring."""
+        """Creates a child by combining parent strategies (uniform crossover)."""
         child = IPDGenotype(parent1.memory_depth)
         for i in range(len(parent1.strategy)):
-            child.strategy[i] = random.choice([parent1.strategy[i], parent2.strategy[i]])  # Uniform crossover
+            child.strategy[i] = random.choice([parent1.strategy[i], parent2.strategy[i]])
         return child
 
     def mutate(self, agent):
-        """Mutates an agent's strategy slightly."""
+        """Mutates agent strategy slightly."""
         for i in range(len(agent.strategy)):
             if np.random.rand() < self.mutation_rate:
-                agent.strategy[i] += np.random.normal(0, 0.1)  # Small Gaussian mutation
-                agent.strategy[i] = np.clip(agent.strategy[i], 0, 1)  # Keep probability in [0,1]
+                agent.strategy[i] += np.random.normal(0, 0.1)
+                agent.strategy[i] = np.clip(agent.strategy[i], 0, 1)
 
     def evolve(self, generations=50):
-        """Runs the evolutionary algorithm over multiple generations."""
+        """Runs the evolutionary process over multiple generations."""
+        fitness_scores = []
         for gen in range(generations):
-            print(f"Generation {gen + 1}")
+            # print(f"Generation {gen + 1}")
 
             # Evaluate fitness
-            fitness_scores = [self.evaluate_fitness(agent, self.population) for agent in self.population]
+            # fitness_scores = [self.evaluate_fitness(agent) for agent in self.population]
+            fitness_scores.append(max([self.evaluate_fitness(agent) for agent in self.population]))
+
 
             # Select the next generation
             new_population = []
@@ -90,8 +103,19 @@ class EvolutionaryIPD:
                 self.mutate(child)
                 new_population.append(child)
 
-            self.population = new_population  # Update population
+            # print(f"Best fitness: {max(fitness_scores)}")
+            # print(f"Genotype: {new_population[fitness_scores.index(max(fitness_scores))].strategy}")
+            self.population = new_population
+        return max(self.population, key=lambda agent: self.evaluate_fitness(agent)), fitness_scores
 
+
+# Plot fitness progress over generations
+def plot_fitness_over_time(fitness_scores, opponentStrategy):
+    plt.plot(fitness_scores)
+    plt.xlabel("Generation")
+    plt.ylabel("Fitness")
+    plt.title("Fitness over Time, Opponent: " + str(opponentStrategy))
+    plt.show()
 
 # Define a wrapper class for the agent's play function
 class StrategyWrapper:
@@ -102,8 +126,26 @@ class StrategyWrapper:
         return self.strategy_function(history)
 
 
-evolution = EvolutionaryIPD(population_size=50, memory_depth=2)
-evolution.evolve(generations=50)
+fixed_strategies = [game.always_cooperate, game.always_defect, game.tit_for_tat, game.adaptive_strategy]
+best_agents = []
 
+for strat in fixed_strategies:
+    print("Fixed strategy: " + str(strat))
+    evolution = EvolutionaryIPD(population_size=50, memory_depth=3, opponentStrategy=strat)
+    best_agent, fitness_scores = evolution.evolve(generations=30)
+    best_agents.append(best_agent)
+
+    plot_fitness_over_time(fitness_scores, opponentStrategy=strat)
+
+    agentScore, fixedScore, _, _ = play_game(strategy1=best_agent, strategy2=StrategyWrapper(strat), num_rounds=50)
+    print(f"Agent score: {agentScore}, Strat score: {fixedScore}")
+    print(f"Best agent genome: {best_agent.strategy}")
+
+for best_agent in best_agents:
+    print("Testing the agents on all the fixed strategies")
+    for strat in fixed_strategies:
+        print("Fixed strategy: " + str(strat))
+        agentScore, fixedScore, _, _ = play_game(strategy1=best_agent, strategy2=StrategyWrapper(strat), num_rounds=50)
+        print(f"Agent score: {agentScore}, Strat score: {fixedScore}")
 
 
