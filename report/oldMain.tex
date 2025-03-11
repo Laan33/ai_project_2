@@ -87,17 +87,63 @@ I chose these, as while PMX is more likely to produce a better child, OX can pro
 
 \section{Testing}
 
+\subsection{Training on all fixed strategies}
+
+
+% Stopping early at generation 52 due to no improvement in fitness.
+% [0.13459676 0.18185511 0.94024677 0.         1.         0.50322192
+%  0.86521201]
+
+% Testing the agents on all the fixed strategies
+% Agent score: 248, Strat score: 3, Strat: always_cooperate
+% Agent score: 6, Strat score: 226, Strat: always_defect
+% Agent score: 116, Strat score: 116, Strat: tit_for_tat
+% Agent score: 118, Strat score: 118, Strat: adaptive_strategy
+
+% Process finished with exit code 0
+
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\linewidth]{Figures/fixed_strategies/generalised.png}
+	\caption{Example of convergence over generations}
+	\label{fig:convergence_example}
+\end{figure}
+
+
+\begin{figure}[h!]
+	\centering
+	\includegraphics[width=0.8\linewidth]{Figures/fixed_strategies/plot_2025-03-10 20-36-19_0.png}
+	\caption{Example of convergence over generations}
+	\label{fig:convergence_example}
+\end{figure}
+
+\subsection{Against other fixed strategies}
+
+For fun, I tested the best agents from each of the training strategies against all of the strategies once it had evolved.
+Unsurprisingly, the \texttt{Always Cooperate} strategy performed well when it was tested against itself and the and \texttt{Always Defect} strategy, as it always was going to select the highest reward option, being always defect.
+It did hold it's own though against the two other strategies, came out on top against the other three strategies.
+
+The \texttt{Always Defect} strategy performed the worst, as it only knew what to do when the other agent defected twice in a row. 
+The only wins it had were when the other combinations were used and it happened to have a random value initialised that proved to be lucky.
+
+
+The other two strategies are interesting to look at in how they performed.
+\texttt{Tit-for-Tat} was quite compliant, and matched equal scores, except for when it was confused by \texttt{Always Defect}.
+\texttt{Adaptive Strategy} did well with \texttt{Always Cooperate}, but lost miserably out to \texttt{Always Defect}. Otherwise, it matched well for the other two tests.
+
+Agent Score / Fixed Strategy Score
 \subsection{Against other strategies}
 \begin{table}[h!]
     \centering
-    \begin{tabular}{|c|c|c|c|c|}
+    \begin{tabular}{|c|c|c|c|c|c|}
         \hline
-        \textbf{Fixed Strategy (Tested On)} & \textbf{Always Cooperate} & \textbf{Always Defect} & \textbf{Tit-for-Tat} & \textbf{Adaptive Strategy} \\ \hline
-        \textbf{Agent Opponent (Trained On)} & \multicolumn{4}{c|}{\textbf{Agent Score / Fixed Strategy Score}} \\ \hline
-        Always Cooperate & 250 / 0 & 49 / 54 & 114 / 109 & 61 / 51 \\ \hline
-        Always Defect & 166 / 126 & 50 / 50 & 54 / 49 & 60 / 55 \\ \hline
-        Tit-for-Tat & 150 / 150 & 10 / 210 & 150 / 150 & 150 / 150 \\ \hline
-        Adaptive Strategy & 176 / 111 & 2 / 242 & 131 / 131 & 151 / 131 \\ \hline
+		\textbf{(Trained On)} & \multicolumn{5}{c|}{\textbf{Fixed Strategy (Tested On)}} \\ \hline
+        \textbf{} & \textbf{Always Cooperate} & \textbf{Always Defect} & \textbf{Tit-for-Tat} & \textbf{Adaptive Strategy} & \textbf{Sum of Score} \\ \hline        
+        \textbf{Always Cooperate} & 250 / 0 & 49 / 54 & 114 / 109 & 61 / 51 & 469\\ \hline
+        \textbf{Always Defect} & 166 / 126 & 50 / 50 & 54 / 49 & 60 / 55 & 325\\ \hline
+        \textbf{Tit-for-Tat} & 150 / 150 & 10 / 210 & 150 / 150 & 150 / 150 & 460\\ \hline
+        \textbf{Adaptive Strategy} & 176 / 111 & 2 / 242 & 131 / 131 & 151 / 131 & 460\\ \hline
     \end{tabular}
     \caption{Agent performance against fixed strategies after training on different opponents}
     \label{tab:agent_vs_fixed_strats}
@@ -125,12 +171,12 @@ I implemented a max number of generations to run, but I also added a clause, tha
 
 This is because, genetic algorithms can get stuck in local optima, or just simply converge.
 
-\begin{figure}[h!]
-	\centering
-	\includegraphics[width=0.8\linewidth]{convergence_example_.png}
-	\caption{Example of convergence over generations}
-	\label{fig:convergence_example}
-\end{figure}
+% \begin{figure}[h!]
+% 	\centering
+% 	\includegraphics[width=0.8\linewidth]{convergence_example_.png}
+% 	\caption{Example of convergence over generations}
+% 	\label{fig:convergence_example}
+% \end{figure}
 
 The above figure shows an example of convergence over generations, and how the algorithm will cut it off early, if it hasn't improved significantly (where this was to run to 2000 generations, it stopped at ~1620)
 %------------------------------------------------
@@ -140,92 +186,24 @@ The above figure shows an example of convergence over generations, and how the a
 \subsection{Experimentation setup}
 To evaluate the performance of the genetic algorithm (GA) for the travelling salesperson problem (TSP), I ran experiments on three different datasets: berlin52, kroA100, and pr1002.
 
-I implemented grid search to fine-tune hyperparameters, including population size, crossover rate, mutation rate, and tournament size. The algorithm was run for each combination of hyperparameters.
-
-I also implemented a gridsearch method for the crossover and mutation methods, to see which would work best for the TSP.
-
-\subsection{Method testing results}
-\begin{table}[h!]
-	\centering
-	\begin{tabular}{|c|c|c|c|c|c|c|c|}
-	\hline
-	\textbf{Best Fitness} & \textbf{Time (s)} & \textbf{Iterations} & \textbf{Mutation Method} & \textbf{Crossover Method} \\ \hline
-	9709.39 & 3.373 & 496 & swap\_mutation & ordered\_crossover \\ \hline
-	9974.86 & 2.492 & 400 & swap\_mutation & partially\_mapped\_crossover \\ \hline
-	8962.86 & 2.63 & 400 & inversion\_mutation & ordered\_crossover \\ \hline
-	\textbf{8124.54} & \textbf{2.391} & \textbf{400} & \textbf{inversion\_mutation} & \textbf{partially\_mapped\_crossover} \\ \hline
-	\end{tabular}
-	\caption{Comparison of different GA configurations}
-	\label{tab:method_testing_results}
-\end{table}
-
-For all of the above tests, the following parameters were used:
-\begin{table}[h!]
-	\centering
-	\begin{tabular}{|c|c|c|}
-	\hline
-	\textbf{Population Size} & \textbf{Mutation Rate} & \textbf{Crossover Rate} \\ \hline
-	200 & 0.15 & 0.87 \\ \hline
-	\end{tabular}
-	\caption{GA Parameters}
-	\label{tab:params}
-\end{table}
 
 \subsubsection{Best crossover method}
-In my quick experiment on berlin52, PMX achieved the best score alongside inversion mutation, but when PMX and OX were paired with swap mutation, OX had a better fitness. 
-This was still far off the mark of using inversion mutation, but it might be that ordered crossover is better when it's with swap mutation, 
-as it can provide a more diverse population (when swap mutation may not be enough to provide that diversity).
-
-It could also be down to the parameters used, as these are close to the best parameters, which were found using inversion mutation and PMX.
 
 \subsubsection{Best mutation method}
-Inversion mutation proved to lead to better overall solutions compared to swap mutation. Inversion mutation may have allowed the algorithm to escape local optima more effectively, where swap mutation may have been too conservative and better for fine tuning.
-
+n 
 \subsubsection{Best parameters}
-Through grid search, I identified the following optimal hyperparameters for the TSP datasets:
-
-\begin{table}[h!]
-	\centering
-	\begin{tabular}{|c|c|c|c|}
-	\hline
-	\textbf{Dataset} & \textbf{Population Size} & \textbf{Crossover Rate} & \textbf{Mutation Rate} \\ \hline
-	\textbf{berlin52} & 470 & 0.9 & 0.12 (inversion mutation used) \\ \hline
-	\textbf{kroA100} & 470 & 0.71 & 0.2 (inversion mutation used) \\ \hline
-	\end{tabular}
-	\caption{Optimal hyperparameters for TSP datasets}
-	\label{tab:optimal_params}
-\end{table}
-
-Notably for me, both datasets favored a relatively large population size, which will have helped maintain a diverse population and avoid premature convergence (avoiding getting stuck in local optima). 
-
-For berlin52, the higher crossover rate might suggest that more aggressive exploration was beneficial as it's a smaller problem instance, whereas the kroA100 dataset required a more balanced approach with a higher mutation rate to escape local optima.
-
 
 \section{Comparison with known optimal solutions}
 \label{Comparison with known optimal solutions}
 
 Comparing to the optimal solutions from Heidelberg university \cite{heidelberg_university_best_known}, my algorithm achieved reasonably good results on the smaller datasets.
 
-It really struggled with the larger Pr1002 dataset, which I expected for my basic GA. 
-I was bound by both time and computing power, so I couldn't run the algorithm for long enough to get a good solution, with a much higher population size, allowing more generations before convergence.
-
-\begin{table}[h!]
-\centering
-\begin{tabular}{|c|c|c|c|}
-\hline
-\textbf{Dataset} & \textbf{My Algorithm} & \textbf{Optimal Solution} & \textbf{Difference} \\ \hline
-\textbf{berlin52} & 7,700.2 & 7,542 & 2.1\% \\ \hline
-\textbf{kroA100} & 23,171.6 & 21,282 & 8.88\% \\ \hline
-\textbf{pr1002} & 1,318,922.4 & 259,045 & 409\% \\ \hline
-\end{tabular}
-\caption{Comparison of algorithms with known optimal solutions}
-\label{tab:comparison}
-\end{table}
-
-The differnece for pr1002 dataset is very large, but I think it will come down drastically with a larger population size, and more generations.
 
 \section{Potential improvements}
 \label{Potential improvements}
+
+
+
 One easy, improvment I believe for my algorithm would be to employ elitism.
 I implemented it in a early version of the program. I chose not to implement it, as I wanted to see how the various methods for crossover and mutation would handle the problem alone, without the help of elitism.
 It would probably extract a small bit more performance out, especially for the bigger datasets, less so in the Berlin dataset.
