@@ -59,117 +59,115 @@ Github repository with code available \href{https://github.com/Laan33/ai_project
 
 \section{Implementation details \& design choices}
 
-\subsection{Selection method}
-I implemented and tried roulette wheel selection, tournament selection and the monte carlo selection methods.
-I found tournament to be the most reliable, and easiest to implement in python, to actually get consistent, repeatable results (that actually worked).
+\subsection{Tournament Selection}
+I used tournament selection for selecting parents for crossover. For my testing, I used a value of 5 for k, as it was a good balance between exploration and exploitation.
 
-As I'll elaborate on further in the potential improvements section \ref{Potential improvements}, I believe that tournament selection is the best choice for the travelling salesperson problem.
-It is suited well for the TSP, as it maintains a good diversity in the population, and doesn't suffer from early convergence like roulette wheel selection can\cite{genetic_algorithm_afternoon}.
+As I elaborate on in \ref{Training on all fixed strategies}, for when I wanted to 
 
-\subsection{Crossover methods}
-
-I implemented both ordered crossover and partially mapped crossover. 
-
-In partially mapped crossover (PMX)\cite{baeldung_pmx}, a random section of genes from one parent is copied to the child. The corresponding genes from the other parent are then mapped to avoid duplicates, ensuring each value appears exactly once. This method helps preserve relative positions within the crossover section.
-
-In ordered crossover (OX)\cite{ordered_crossover_stackoverflow}, a random section of genes from one parent is copied to the child. The remaining positions are filled with genes from the other parent, in the order they appear, while skipping any duplicates. This ensures that the child inherits the relative ordering of cities from both parents.
-
-I picked these two, as they both will work well for the travelling salesman problem, as they both preserve the order of the cities in the parents, which is crucial for TSP, by ensuring that good sequences are passed to the next generation. However, they differ in how they balance exploration and exploitation:
-
-\begin{itemize}
-    \item \textbf{PMX} supports more \textbf{exploitation} of the current solution by maintaining the relative positions of cities, which can result in faster convergence to a local optimum. This method tends to produce more similar offspring to the parents, making it more reliable but potentially limiting the diversity in the population, especially in the early stages of the algorithm.
-    
-    \item \textbf{OX}, on the other hand, fosters greater \textbf{exploration} by allowing more randomness in the order of cities. While this can lead to larger variations in offspring, it also means the algorithm has a better chance of avoiding local optima and exploring a broader solution space. This approach is particularly useful early in the evolution process when diversity in the population is needed to avoid premature convergence.
-\end{itemize}
-
-I chose these, as while PMX is more likely to produce a better child, OX can provide a more diverse population, which can be useful in the early stages of the algorithm and it will be interesting to see how they compare.
+\subsection{Crossover method}
+I had a uniform crossover method, which used tournament selection to
 
 
+\subsection{Termination condition}
+I implemented a max number of generations to run, but I also added a clause, that if the algorithm hasn't improved by more than 0.25\% in the last 60 generations, it will terminate early.
+
+This is because, genetic algorithms can get stuck in local optima, or just simply converge.
+
+\section{Part 1: Fixed strategies}
 \section{Testing}
+The agent had a memroy of 2, and only awareness of the enemys moves.
 
-\subsection{Training on all fixed strategies}
-
-
-% Stopping early at generation 52 due to no improvement in fitness.
-% [0.13459676 0.18185511 0.94024677 0.         1.         0.50322192
-%  0.86521201]
-
-% Testing the agents on all the fixed strategies
-% Agent score: 248, Strat score: 3, Strat: always_cooperate
-% Agent score: 6, Strat score: 226, Strat: always_defect
-% Agent score: 116, Strat score: 116, Strat: tit_for_tat
-% Agent score: 118, Strat score: 118, Strat: adaptive_strategy
-
-% Process finished with exit code 0
-
+\subsubsection{Training on all fixed strategies}
+\label{Training on all fixed strategies}
+I trained a generalised agent on all the fixed strategies, with a generalised evaluation function.
+I did this as tournament selection would always discount any algorithms who were trained on the \texttt{Always Defect} strategy.
+Tournament selection wouldn't picked those agents, even if it was a perfect response to \texttt{Always Defect}, as it results in a really low payout relative to payouts other agents have when faced with 'easier' strategies. 
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=0.8\linewidth]{Figures/fixed_strategies/generalised.png}
-	\caption{Example of convergence over generations}
-	\label{fig:convergence_example}
+	\includegraphics[width=0.8\linewidth]{Figures/part_1/generalised.png}
+	\caption{Generalised Trained Alogrithm Tested On All Fixed Strategies}
+	\label{fig:general_graph}
 \end{figure}
 
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+		\textbf{(Fixed Strategy)} & \textbf{Agent Score} & \textbf{Fixed Strat Score} \\ \hline
+        \textbf{Always Cooperate} & 172 & 117\\ \hline
+        \textbf{Always Defect} & 50 & 50 \\ \hline
+        \textbf{Tit-for-Tat} & 139 & 139 \\ \hline
+        \textbf{Adaptive Strategy} & 167 & 122 \\ \hline
+        \textbf{Spiteful Strategy} & 120 & 130 \\ \hline
+    \end{tabular}
+    \caption{Generalised agent performance against each fixed strategy}
+    \label{tab:gen_agent_vs_fixed_strats}
+\end{table}
 
-\begin{figure}[h!]
+With the stopping condition in place, the evolution stopped early at generation 89, as the fitness had plateaued, and the diversity of the population had converged.
+
+As we can see, both in the graph\ref{fig:general_graph} and the results table\ref{tab:gen_agent_vs_fixed_strats}, 
+the agent performed well against all the fixed strategies, except for the spiteful and always cooperate strategies.
+It isn't a surprise it struggled with the always defect strategy, as the agents training on the adaptive, spiteful and tit-for-tat strategies will have biased it's strategy for when an opponent has played \texttt{CC}. 
+We can see this in the table\ref{tab:history_probabilities} representing the probability of the agent complying based on the opponent history.
+If the memory was increased, it would almost certainly be able to differentiate the always cooperate strategy from the others.
+
+The agent had a average fitness of 135.71, when averaged over all the fixed strategies 
+(which however, isn't normalised for the different max possible results for each strategy), the table above, is a much better representation of the agent's performance.
+
+% The best agent genome representation\ref{tab:history_probabilities} is:
+\begin{table}[h!]
 	\centering
-	\includegraphics[width=0.8\linewidth]{Figures/fixed_strategies/plot_2025-03-10 20-36-19_0.png}
-	\caption{Example of convergence over generations}
-	\label{fig:convergence_example}
-\end{figure}
+	\begin{tabular}{|c|c|}
+		\hline
+		\textbf{(History permutation)} & \textbf{Probability of Cooperate} \\ \hline
+		"" & 0.49 \\ \hline
+		C & 0.86 \\ \hline
+		D & 0.11 \\ \hline
+		CC & 0.74 \\ \hline
+		CD & 0.94 \\ \hline
+		DC & 1.0 \\ \hline
+		DD & 0.0 \\ \hline
+	\end{tabular}
+	\caption{Best generalised agent strategy genome}
+	\label{tab:history_probabilities}
+\end{table}
 
-\subsection{Against other fixed strategies}
+\subsubsection{Specific agents against other fixed strategies}
 
-For fun, I tested the best agents from each of the training strategies against all of the strategies once it had evolved.
-Unsurprisingly, the \texttt{Always Cooperate} strategy performed well when it was tested against itself and the and \texttt{Always Defect} strategy, as it always was going to select the highest reward option, being always defect.
+For fun, for each fixed strategy, I trained an agent against only that specific strategy, and then had the best evolved agent play all of the other strategies.
+
+Some notable results: unsurprisingly, the \texttt{Always Cooperate} strategy performed well when it was tested against itself and the and \texttt{Always Defect} strategy, as it always was going to select the highest reward option, being always defect.
 It did hold it's own though against the two other strategies, came out on top against the other three strategies.
 
 The \texttt{Always Defect} strategy performed the worst, as it only knew what to do when the other agent defected twice in a row. 
 The only wins it had were when the other combinations were used and it happened to have a random value initialised that proved to be lucky.
 
 
-The other two strategies are interesting to look at in how they performed.
-\texttt{Tit-for-Tat} was quite compliant, and matched equal scores, except for when it was confused by \texttt{Always Defect}.
+The adaptive and tit for tat strategies are interesting to look at in how they performed.
+\texttt{Tit-for-Tat} was quite compliant, and matched equal scores, except for when it was confused by \texttt{Always Defect} (as it not had any training experience with repeated \texttt{DD}).
 \texttt{Adaptive Strategy} did well with \texttt{Always Cooperate}, but lost miserably out to \texttt{Always Defect}. Otherwise, it matched well for the other two tests.
 
-Agent Score / Fixed Strategy Score
-\subsection{Against other strategies}
-\begin{table}[h!]
-    \centering
-    \begin{tabular}{|c|c|c|c|c|c|}
-        \hline
-		\textbf{(Trained On)} & \multicolumn{5}{c|}{\textbf{Fixed Strategy (Tested On)}} \\ \hline
-        \textbf{} & \textbf{Always Cooperate} & \textbf{Always Defect} & \textbf{Tit-for-Tat} & \textbf{Adaptive Strategy} & \textbf{Sum of Score} \\ \hline        
-        \textbf{Always Cooperate} & 250 / 0 & 49 / 54 & 114 / 109 & 61 / 51 & 469\\ \hline
-        \textbf{Always Defect} & 166 / 126 & 50 / 50 & 54 / 49 & 60 / 55 & 325\\ \hline
-        \textbf{Tit-for-Tat} & 150 / 150 & 10 / 210 & 150 / 150 & 150 / 150 & 460\\ \hline
-        \textbf{Adaptive Strategy} & 176 / 111 & 2 / 242 & 131 / 131 & 151 / 131 & 460\\ \hline
-    \end{tabular}
-    \caption{Agent performance against fixed strategies after training on different opponents}
-    \label{tab:agent_vs_fixed_strats}
-\end{table}
+% Agent Score / Fixed Strategy Score
+% \subsubsection{Against other strategies}
+% \begin{table}[h!]
+%     \centering
+%     \begin{tabular}{|c|c|c|c|c|c|}
+%         \hline
+% 		\textbf{(Trained On)} & \multicolumn{5}{c|}{\textbf{Fixed Strategy (Tested On)}} \\ \hline
+%         \textbf{} & \textbf{Always Cooperate} & \textbf{Always Defect} & \textbf{Tit-for-Tat} & \textbf{Adaptive Strategy} & \textbf{Sum of Score} \\ \hline        
+%         \textbf{Always Cooperate} & 250 / 0 & 49 / 54 & 114 / 109 & 61 / 51 & 469\\ \hline
+%         \textbf{Always Defect} & 166 / 126 & 50 / 50 & 54 / 49 & 60 / 55 & 325\\ \hline
+%         \textbf{Tit-for-Tat} & 150 / 150 & 10 / 210 & 150 / 150 & 150 / 150 & 460\\ \hline
+%         \textbf{Adaptive Strategy} & 176 / 111 & 2 / 242 & 131 / 131 & 151 / 131 & 460\\ \hline
+%     \end{tabular}
+%     \caption{Agent performance against fixed strategies after training on different opponents}
+%     \label{tab:agent_vs_fixed_strats}
+% \end{table}
 
 
 
-
-
-
-
-\subsection{Mutation methods}
-
-I implemented both swap mutation and inversion mutation.
-
-In swap mutation, two random cities in the tour are selected, and their positions are exchanged. This introduces small, random changes while preserving the tour length.
-
-In inversion mutation, a random subsection of the tour is selected, and the order of cities within that section is reversed. This helps the algorithm explore new solutions while maintaining most of the existing tour structure.
-
-I chose these because they introduce different types of variations in the population. Swap mutation makes small changes that can help fine-tune solutions, while inversion mutation can make larger changes that help the algorithm escape local optima. 
-I wanted to see, when compairing both methods, the differences in the makeup of the algorithm.
-
-\subsection{Termination condition}
-I implemented a max number of generations to run, but I also added a clause, that if the algorithm hasn't improved by more than 0.25\% in the last 60 generations, it will terminate early.
-
-This is because, genetic algorithms can get stuck in local optima, or just simply converge.
 
 % \begin{figure}[h!]
 % 	\centering
@@ -177,13 +175,20 @@ This is because, genetic algorithms can get stuck in local optima, or just simpl
 % 	\caption{Example of convergence over generations}
 % 	\label{fig:convergence_example}
 % \end{figure}
-
-The above figure shows an example of convergence over generations, and how the algorithm will cut it off early, if it hasn't improved significantly (where this was to run to 2000 generations, it stopped at ~1620)
 %------------------------------------------------
 
-\section{Experimentation results \& analysis}
+\section{Part 2: Extension}
 
-\subsection{Experimentation setup}
+\textbf{Disclaimer:} 
+I didn't read the assignment spec initially and actually made a much more complex genome for part 1, and actually didn't have too much to extend for part 2. (I had a memory of 2, and probabilities rather than binary decisions)
+Here is what I have changed:
+\begin{itemize}
+	\item Increased memory from 2 to 6.
+	\item Added noise.
+	\item 
+\end{itemize}
+
+\subsubsection{Experimentation setup}
 To evaluate the performance of the genetic algorithm (GA) for the travelling salesperson problem (TSP), I ran experiments on three different datasets: berlin52, kroA100, and pr1002.
 
 
@@ -196,7 +201,6 @@ n
 \section{Comparison with known optimal solutions}
 \label{Comparison with known optimal solutions}
 
-Comparing to the optimal solutions from Heidelberg university \cite{heidelberg_university_best_known}, my algorithm achieved reasonably good results on the smaller datasets.
 
 
 \section{Potential improvements}
@@ -204,20 +208,21 @@ Comparing to the optimal solutions from Heidelberg university \cite{heidelberg_u
 
 
 
-One easy, improvment I believe for my algorithm would be to employ elitism.
-I implemented it in a early version of the program. I chose not to implement it, as I wanted to see how the various methods for crossover and mutation would handle the problem alone, without the help of elitism.
-It would probably extract a small bit more performance out, especially for the bigger datasets, less so in the Berlin dataset.
 
-I believe that tournament selection is a good choice, being the sweet spot for a genetic algorithm solving TSP. It's fast, simple, and maintains a good diversity and doesn't suffer with early convergence like roulette wheel selection can\cite{genetic_algorithm_afternoon}.
-I also tried monte carlo selection, but I do not believe it works for the travelling salesperson problem.
+% One easy, improvment I believe for my algorithm would be to employ elitism.
+% I implemented it in a early version of the program. I chose not to implement it, as I wanted to see how the various methods for crossover and mutation would handle the problem alone, without the help of elitism.
+% It would probably extract a small bit more performance out, especially for the bigger datasets, less so in the Berlin dataset.
 
-Another, is to run the same parameters multiple times on differening starting populations, and averaging the results. This would give a more accurate representation of the algorithm's performance, as the starting population can have a big impact on the final result. e.g. it may get stuck in a local optima, or converge too early.
-Also related to this, is to allow the algorithm to do hyperparameter tuning on the fly (e.g. using adaptive mutation or crossover rates based on fitness), as it's running. This would allow the algorithm to adjust to the problem, and the population, as it's running, and not just at the start.
+% I believe that tournament selection is a good choice, being the sweet spot for a genetic algorithm solving TSP. It's fast, simple, and maintains a good diversity and doesn't suffer with early convergence like roulette wheel selection can\cite{genetic_algorithm_afternoon}.
+% I also tried monte carlo selection, but I do not believe it works for the travelling salesperson problem.
 
-For the bigger pr1002 dataset, I think given more time and resources would help improve the results on the large pr1002 dataset. 
-Mainly, this would allow me to up the population size by a lot, which then allows it to run for a lot more generations without converging too early, allowing more exploraiton of the solution space.
+% Another, is to run the same parameters multiple times on differening starting populations, and averaging the results. This would give a more accurate representation of the algorithm's performance, as the starting population can have a big impact on the final result. e.g. it may get stuck in a local optima, or converge too early.
+% Also related to this, is to allow the algorithm to do hyperparameter tuning on the fly (e.g. using adaptive mutation or crossover rates based on fitness), as it's running. This would allow the algorithm to adjust to the problem, and the population, as it's running, and not just at the start.
 
-There is other improvements, such as a hybrid approach of a local search algorithm, e.g. 2-opt, to improve the final solution once the genetic algorithm has converged. This would help fine-tune the solution, and get a better result.
+% For the bigger pr1002 dataset, I think given more time and resources would help improve the results on the large pr1002 dataset. 
+% Mainly, this would allow me to up the population size by a lot, which then allows it to run for a lot more generations without converging too early, allowing more exploraiton of the solution space.
+
+% There is other improvements, such as a hybrid approach of a local search algorithm, e.g. 2-opt, to improve the final solution once the genetic algorithm has converged. This would help fine-tune the solution, and get a better result.
 
 \printbibliography
 \end{document}
