@@ -64,9 +64,10 @@ class IPDGenotype:
 
 
 class EvolutionaryIPD:
-    def __init__(self, population_size=50, memory_depth=2, mutation_rate=0.1, opponent_strategy = None):
+    def __init__(self, population_size=50, memory_depth=2, mutation_rate=0.1, opponent_strategy = None, generalised_eval = False):
         self.population_size = population_size
         self.mutation_rate = mutation_rate
+        self.generalised_eval = generalised_eval
         self.population = [IPDGenotype(memory_depth) for _ in range(population_size)]
         self.fixed_strategies = [game.always_cooperate, game.always_defect, game.tit_for_tat, game.adaptive_strategy]
         if opponent_strategy is None:
@@ -131,7 +132,11 @@ class EvolutionaryIPD:
                 new_population.append(child)
 
             self.population = new_population
-            best_fitness = max([self.evaluate_fitness_all_fixed(agent) for agent in self.population])
+            if self.generalised_eval is True:
+                best_fitness = max([self.evaluate_fitness_all_fixed(agent) for agent in self.population])
+            else:
+                best_fitness = max([self.evaluate_fitness(agent) for agent in self.population])
+
             fitness_scores.append(best_fitness)
             diversity_scores.append(calculate_diversity(self.population))  # Track diversity
 
@@ -192,8 +197,8 @@ class StrategyWrapper:
 fixed_strategies = [game.always_cooperate, game.always_defect, game.tit_for_tat, game.adaptive_strategy, game.spiteful_strategy]
 best_agents = []
 
-evolution = EvolutionaryIPD(population_size=50, memory_depth=2)
-best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=100)
+evolution = EvolutionaryIPD(population_size=50, memory_depth=2, generalised_eval=True)
+best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=200)
 
 plot_diversity(fitness_scores, diversity_scores)
 
@@ -202,19 +207,19 @@ print("Best generalised agent strategy genome:")
 print_history_strat_map(best_agent)
 
 print("\n----------------")
-print("\nTesting the generalised agent on all the fixed strategies\n")
+print("Testing the generalised agent on all the fixed strategies")
 print("----------------\n")
 for strat in fixed_strategies:
     agentScore, fixedScore, _, _ = play_game(strategy1=best_agent, strategy2=StrategyWrapper(strat), num_rounds=50)
-    print(f"Agent score: {agentScore}, Strat score: {fixedScore}, Strat: {strat.__name__}")
+    print(f"Generalised agent score: {agentScore}, Strat score: {fixedScore}, Strat: {strat.__name__}")
 
 print("\n----------------")
-print("\nTraining agents on a single fixed strategy, and playing against itself\n")
-print("----------------\n")
+print("Training agents on a single fixed strategy, and playing against itself")
+print("----------------")
 for strat in fixed_strategies:
     print("\nFixed strategy: " + str(strat.__name__))
-    evolution = EvolutionaryIPD(population_size=50, memory_depth=2, opponent_strategy=strat)
-    best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=300)
+    evolution = EvolutionaryIPD(population_size=60, memory_depth=2, opponent_strategy=strat, generalised_eval=False)
+    best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=100)
     best_agents.append([best_agent, strat.__name__])
 
     plot_diversity(fitness_scores, diversity_scores, strat)
