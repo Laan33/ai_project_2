@@ -4,6 +4,7 @@ import itertools
 from math import isclose
 
 from numpy.ma.extras import average
+from openpyxl.styles.builtins import total
 
 import play_game as game
 import random
@@ -81,7 +82,6 @@ class EvolutionaryIPD:
 
         if self.setStrat is False:
             self.opponentStrategy = random.choice(self.fixed_strategies)
-            print(self.opponentStrategy.__name__)
             agent_score, _, _, _ = game.play_game(agent, StrategyWrapper(self.opponentStrategy), num_rounds=50)
             return agent_score
         else:
@@ -91,10 +91,17 @@ class EvolutionaryIPD:
                 # total_score += agent_score
                 # return round(total_score/3, 2)
 
-    def tournament_selection(self, k=6):
+    def evaluate_fitness_all_fixed(self, agent):
+        total_score = 0
+        for strat in self.fixed_strategies:
+            agent_score, _, _, _ = game.play_game(agent, StrategyWrapper(strat), num_rounds=50)
+            total_score += agent_score
+        return round(total_score/len(self.fixed_strategies), 2)
+
+    def tournament_selection(self, k=5):
         """Selects the best agent from a random subset of the population."""
         tournament = random.sample(self.population, k)
-        return max(tournament, key=lambda agent: self.evaluate_fitness(agent))
+        return max(tournament, key=lambda agent: self.evaluate_fitness_all_fixed(agent))
 
     def crossover(self, parent1, parent2):
         """Creates a child by combining parent strategies (uniform crossover)."""
@@ -124,17 +131,17 @@ class EvolutionaryIPD:
                 new_population.append(child)
 
             self.population = new_population
-            best_fitness = max([self.evaluate_fitness(agent) for agent in self.population])
+            best_fitness = max([self.evaluate_fitness_all_fixed(agent) for agent in self.population])
             fitness_scores.append(best_fitness)
             diversity_scores.append(calculate_diversity(self.population))  # Track diversity
 
             # Early stopping if no improvement
-            if len(fitness_scores) > 50:
-                if isclose(best_fitness, fitness_scores[-49], rel_tol=0.0025):
-                    print(f'Stopping early at generation {gen} due to no improvement in fitness.')
-                    break
+            # if len(fitness_scores) > 50:
+            #     if isclose(best_fitness, fitness_scores[-49], rel_tol=0.00025):
+            #         print(f'Stopping early at generation {gen} due to no improvement in fitness.')
+            #         break
 
-        return max(self.population, key=lambda agent: self.evaluate_fitness(agent)), fitness_scores, diversity_scores
+        return max(self.population, key=lambda agent: self.evaluate_fitness_all_fixed(agent)), fitness_scores, diversity_scores
 
 def calculate_diversity(population):
     """Measure diversity using standard deviation of strategy probabilities."""
@@ -185,8 +192,8 @@ class StrategyWrapper:
 fixed_strategies = [game.always_cooperate, game.always_defect, game.tit_for_tat, game.adaptive_strategy, game.spiteful_strategy]
 best_agents = []
 
-evolution = EvolutionaryIPD(population_size=75, memory_depth=2)
-best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=300)
+evolution = EvolutionaryIPD(population_size=50, memory_depth=2)
+best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=100)
 
 plot_diversity(fitness_scores, diversity_scores)
 
