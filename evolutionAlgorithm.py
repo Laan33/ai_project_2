@@ -29,9 +29,9 @@ choices = ['C', 'D'] # Cooperate or Defect
 
 
 class IPDGenotype:
-    def __init__(self, memory_depth=2):
+    def __init__(self, memory_depth=1):
         self.memory_depth = memory_depth
-        self.strategy_length = (memory_depth ** 2) + 3  # (2^2) + 1 + 2 for memory=2
+        self.strategy_length = 3 ** memory_depth + 1  # Number of possible history states + 1 for no history
         self.strategy = np.random.rand(self.strategy_length)  # Probabilities of cooperating
 
         # Generate all history combinations
@@ -40,15 +40,12 @@ class IPDGenotype:
 
     def create_history_map(self):
         """Creates a mapping of history states to indices in the strategy array."""
-        history_map = {"": 0, "C": 1, "D": 2} # No history, single history cases
+        history_map = {"": 0} # No history
 
-        # Full history cases (e.g., CC, CD, DC, DD for memory=2)
-        all_combos = itertools.product("CD", repeat=self.memory_depth)  # Generate all history pairs
-        index = 3  # Start after no-history and single-history cases
-
-        for combo in all_combos:
-            history_map["".join(combo)] = index
-            index += 1
+        # All combinations of "C" and "D" of length memory_depth (e.g. "C", "D", "CC", "CD", "DC", "DD" for memory_depth=2)
+        for i in range(self.memory_depth + 1):
+            for combo in itertools.product(choices, repeat=i):
+                history_map["".join(combo)] = len(history_map)
 
         return history_map
 
@@ -95,9 +92,16 @@ class EvolutionaryIPD:
     def evaluate_fitness_all_fixed(self, agent):
         total_score = 0
         for strat in self.fixed_strategies:
-            agent_score, _, _, _ = game.play_game(agent, StrategyWrapper(strat), num_rounds=50)
-            total_score += agent_score
+            num_rounds = 50
+            agent_score, _, agent_history, _ = game.play_game(agent, StrategyWrapper(strat), num_rounds=num_rounds)
+            total_score += (agent_score + self.good_samaritan_award(agent_history, num_rounds=num_rounds))
         return round(total_score/len(self.fixed_strategies), 2)
+
+    def good_samaritan_award(self, agent_history, num_rounds=50):
+        """Award for cooperating with all fixed strategies, awarded 55% of the time."""
+        if np.random.rand() <= 0.55 and all(move == 'C' for move in agent_history):
+            return num_rounds * 3.5
+        return 0
 
     def tournament_selection(self, k=5):
         """Selects the best agent from a random subset of the population."""
@@ -143,11 +147,11 @@ class EvolutionaryIPD:
             fitness_scores.append(best_fitness)
             diversity_scores.append(calculate_diversity(self.population))  # Track diversity
 
-            # Early stopping if no improvement
-            if len(fitness_scores) > 50:
-                if isclose(best_fitness, fitness_scores[-49], rel_tol=0.00015):
-                    print(f'Stopping early at generation {gen} due to no improvement in fitness.')
-                    break
+            # # Early stopping if no improvement
+            # if len(fitness_scores) > 150:
+            #     if isclose(best_fitness, fitness_scores[-59], rel_tol=0.00015):
+            #         print(f'Stopping early at generation {gen} due to no improvement in fitness.')
+            #         break
 
         if self.generalised_eval is True:
             return max(self.population, key=lambda agent: self.evaluate_fitness_all_fixed(agent)), fitness_scores, diversity_scores
@@ -205,8 +209,8 @@ class StrategyWrapper:
 fixed_strategies = [game.always_cooperate, game.always_defect, game.tit_for_tat, game.adaptive_strategy, game.spiteful_strategy]
 best_agents = []
 
-evolution = EvolutionaryIPD(population_size=50, memory_depth=2, generalised_eval=True)
-best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=200)
+evolution = EvolutionaryIPD(population_size=50, memory_depth=6, generalised_eval=True)
+best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=300)
 
 plot_diversity(fitness_scores, diversity_scores)
 
@@ -220,46 +224,6 @@ print("----------------\n")
 for strat in fixed_strategies:
     agentScore, fixedScore, _, _ = play_game(strategy1=best_agent, strategy2=StrategyWrapper(strat), num_rounds=50)
     print(f"Generalised agent score: {agentScore}, Strat score: {fixedScore}, Strat: {strat.__name__}")
-
-print("\n----------------")
-print("Training agents on a single fixed strategy, and playing against itself")
-print("----------------")
-
-fig, axs = plt.subplots(3, 2, figsize=(10, 15))
-fig.suptitle('Fitness and Diversity Over Time for Different Fixed Strategies Tested Against Their Training Strat')
-
-for i, strat in enumerate(fixed_strategies):
-    print("\nFixed strategy: " + str(strat.__name__))
-    evolution = EvolutionaryIPD(population_size=60, memory_depth=2, opponent_strategy=strat, generalised_eval=False)
-    best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=100)
-    best_agents.append([best_agent, strat.__name__])
-
-    row, col = divmod(i, 2)
-    ax1 = axs[row, col]
-    ax1.plot(fitness_scores, label="Fitness", color='tab:blue')
-    ax1.set_xlabel("Generation")
-    ax1.set_ylabel("Fitness", color='tab:blue')
-    ax1.set_title(f"Opponent: {strat.__name__}")
-
-    ax2 = ax1.twinx()
-    ax2.plot(diversity_scores, label="Diversity", color='tab:red')
-    ax2.set_ylabel("Diversity", color='tab:red')
-
-    agentScore, fixedScore, _, _ = play_game(strategy1=best_agent, strategy2=StrategyWrapper(strat), num_rounds=50)
-    print(f"Agent score: {agentScore}, Strat score: {fixedScore}")
-    print("Best agent genome: ")
-    print_history_strat_map(best_agent)
-
-plt.tight_layout(rect=[0, 0, 1, 0.96])
-plt.show()
-
-print("\nTesting the specialist agents against all the fixed strategies")
-for best_agent in best_agents:
-    print("--------------\n")
-    for strat in fixed_strategies:
-        print(f"Agent training: {best_agent[1]}, now playing fixed strategy: {str(strat.__name__)}")
-        agentScore, fixedScore, _, _ = play_game(strategy1=best_agent[0], strategy2=StrategyWrapper(strat), num_rounds=50)
-        print(f"Agent score: {agentScore}, Strat score: {fixedScore}\n")
 
 
 
