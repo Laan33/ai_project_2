@@ -169,7 +169,7 @@ def plot_fitness_over_time(fitness_scores, opponentStrategy):
     plt.title("Fitness over Time, Opponent: " + str(opponentStrategy.__name__))
     plt.show()
 
-def plot_diversity(fitness_scores, diversity_scores, oppStrat=None, subplot_graph=False):
+def plot_diversity(fitness_scores, diversity_scores, oppStrat=None):
     fig, ax1 = plt.subplots()
 
     ax1.set_xlabel("Generation")
@@ -186,8 +186,6 @@ def plot_diversity(fitness_scores, diversity_scores, oppStrat=None, subplot_grap
         plt.title("Fitness and Diversity Over Time, Opponent: " + str(oppStrat.__name__))
     fig.tight_layout()
     plt.show()
-
-def sub_plotting_diversity()
 
 def print_history_strat_map(agent):
     for history, index in agent.history_map.items():
@@ -226,18 +224,34 @@ for strat in fixed_strategies:
 print("\n----------------")
 print("Training agents on a single fixed strategy, and playing against itself")
 print("----------------")
-for strat in fixed_strategies:
+
+fig, axs = plt.subplots(3, 2, figsize=(10, 15))
+fig.suptitle('Fitness and Diversity Over Time for Different Fixed Strategies Tested Against Their Training Strat')
+
+for i, strat in enumerate(fixed_strategies):
     print("\nFixed strategy: " + str(strat.__name__))
     evolution = EvolutionaryIPD(population_size=60, memory_depth=2, opponent_strategy=strat, generalised_eval=False)
     best_agent, fitness_scores, diversity_scores = evolution.evolve(generations=100)
     best_agents.append([best_agent, strat.__name__])
 
-    plot_diversity(fitness_scores, diversity_scores, strat)
+    row, col = divmod(i, 2)
+    ax1 = axs[row, col]
+    ax1.plot(fitness_scores, label="Fitness", color='tab:blue')
+    ax1.set_xlabel("Generation")
+    ax1.set_ylabel("Fitness", color='tab:blue')
+    ax1.set_title(f"Opponent: {strat.__name__}")
+
+    ax2 = ax1.twinx()
+    ax2.plot(diversity_scores, label="Diversity", color='tab:red')
+    ax2.set_ylabel("Diversity", color='tab:red')
 
     agentScore, fixedScore, _, _ = play_game(strategy1=best_agent, strategy2=StrategyWrapper(strat), num_rounds=50)
     print(f"Agent score: {agentScore}, Strat score: {fixedScore}")
     print("Best agent genome: ")
     print_history_strat_map(best_agent)
+
+plt.tight_layout(rect=[0, 0, 1, 0.96])
+plt.show()
 
 print("\nTesting the specialist agents against all the fixed strategies")
 for best_agent in best_agents:
