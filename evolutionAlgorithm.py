@@ -102,7 +102,10 @@ class EvolutionaryIPD:
     def tournament_selection(self, k=5):
         """Selects the best agent from a random subset of the population."""
         tournament = random.sample(self.population, k)
-        return max(tournament, key=lambda agent: self.evaluate_fitness_all_fixed(agent))
+        if self.generalised_eval is True:
+            return max(tournament, key=lambda agent: self.evaluate_fitness_all_fixed(agent))
+        else:
+            return max(tournament, key=lambda agent: self.evaluate_fitness(agent))
 
     def crossover(self, parent1, parent2):
         """Creates a child by combining parent strategies (uniform crossover)."""
@@ -141,12 +144,17 @@ class EvolutionaryIPD:
             diversity_scores.append(calculate_diversity(self.population))  # Track diversity
 
             # Early stopping if no improvement
-            # if len(fitness_scores) > 50:
-            #     if isclose(best_fitness, fitness_scores[-49], rel_tol=0.00025):
-            #         print(f'Stopping early at generation {gen} due to no improvement in fitness.')
-            #         break
+            if len(fitness_scores) > 50:
+                if isclose(best_fitness, fitness_scores[-49], rel_tol=0.00015):
+                    print(f'Stopping early at generation {gen} due to no improvement in fitness.')
+                    break
 
-        return max(self.population, key=lambda agent: self.evaluate_fitness_all_fixed(agent)), fitness_scores, diversity_scores
+        if self.generalised_eval is True:
+            return max(self.population, key=lambda agent: self.evaluate_fitness_all_fixed(agent)), fitness_scores, diversity_scores
+        else:
+            return max(self.population, key=lambda agent: self.evaluate_fitness(agent)), fitness_scores, diversity_scores
+
+
 
 def calculate_diversity(population):
     """Measure diversity using standard deviation of strategy probabilities."""
@@ -161,7 +169,7 @@ def plot_fitness_over_time(fitness_scores, opponentStrategy):
     plt.title("Fitness over Time, Opponent: " + str(opponentStrategy.__name__))
     plt.show()
 
-def plot_diversity(fitness_scores, diversity_scores, oppStrat=None):
+def plot_diversity(fitness_scores, diversity_scores, oppStrat=None, subplot_graph=False):
     fig, ax1 = plt.subplots()
 
     ax1.set_xlabel("Generation")
@@ -178,6 +186,8 @@ def plot_diversity(fitness_scores, diversity_scores, oppStrat=None):
         plt.title("Fitness and Diversity Over Time, Opponent: " + str(oppStrat.__name__))
     fig.tight_layout()
     plt.show()
+
+def sub_plotting_diversity()
 
 def print_history_strat_map(agent):
     for history, index in agent.history_map.items():
