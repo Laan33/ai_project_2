@@ -55,29 +55,41 @@
 \maketitle % Print the title
 
 \section{Github Repository}
-Github repository with code available \href{https://github.com/Laan33/ai_project_1}{here}
+Github repository with code available \href{https://github.com/Laan33/ai_project_2}{here}
 
 \section{Implementation details \& design choices}
 
-\subsection{Tournament Selection}
-I used tournament selection for selecting parents for crossover. For my testing, I used a value of 5 for k, as it was a good balance between exploration and exploitation.
+\subsection{Tournament Selection and Mutation}
+I used tournament selection for selecting parents for crossover. 
+For my testing, I used a value of 5 for k, as it was a good balance between exploration and exploitation.
+I used a mutation rate of 0.1, to allow for a good amount of exploration, but usually it did not result in significant deviations.
 
-As I elaborate on in \ref{Training on all fixed strategies}, for when I wanted to 
+As I elaborate on later \ref{Training on all fixed strategies}, I had to implement an evaluation function where the score was the average of the agent competing against all the fixed strategies, as tournament selection would always discount any algorithms who were competed on the \texttt{Always Defect} strategy.
 
-\subsection{Crossover method}
-I had a uniform crossover method, which used tournament selection to
-
+\subsection{Intialisation and Crossover}
+I used a random initialisation for the population, with each gene being a random float between 0 and 1, representing the probability of cooperating given a certain history permutation.
+I had a uniform crossover method, which randomly allocated a gene from either parent to the child.
 
 \subsection{Termination condition}
-I implemented a max number of generations to run, but I also added a clause, that if the algorithm hasn't improved by more than 0.25\% in the last 60 generations, it will terminate early.
+I implemented a max number of generations to run, but I also added a clause, that if the algorithm hasn't improved by more than 0.015\% in the last 60 generations, it will terminate early.
 
-This is because, genetic algorithms can get stuck in local optima, or just simply converge.
+This was to avoid the genetic algorithms getting stuck in local optima, or to stop when it had plateaued and there wasn't any changes.
 
 \section{Part 1: Fixed strategies}
-\section{Testing}
 The agent had a memroy of 2, and only awareness of the enemys moves.
 
-\subsubsection{Training on all fixed strategies}
+\subsection{Fixed strategies}
+I trained the agent on the following fixed strategies:
+\begin{itemize}
+	\item \textbf{Always Cooperate} - Would always cooperate no matter what the agent did.
+	\item \textbf{Always Defect} - Would always defect no matter what the agent did.
+	\item \textbf{Tit for Tat} - Would do what the agent did on the previous turn.
+	\item \textbf{Adaptive} - Always cooperate, unless the agent defected more than twice in the last 5 moves. 
+	\item \textbf{Spiteful} - 30\% chance of defection the first turn, and had a (0.05 x num\_agent\_defections) probability of defection for all other moves (ignoring the agents first move).
+\end{itemize}
+
+
+\subsubsection{Generalised training on all fixed strategies}
 \label{Training on all fixed strategies}
 I trained a generalised agent on all the fixed strategies, with a generalised evaluation function.
 I did this as tournament selection would always discount any algorithms who were trained on the \texttt{Always Defect} strategy.
@@ -108,8 +120,9 @@ Tournament selection wouldn't picked those agents, even if it was a perfect resp
 With the stopping condition in place, the evolution stopped early at generation 89, as the fitness had plateaued, and the diversity of the population had converged.
 
 As we can see, both in the graph\ref{fig:general_graph} and the results table\ref{tab:gen_agent_vs_fixed_strats}, 
-the agent performed well against all the fixed strategies, except for the spiteful and always cooperate strategies.
-It isn't a surprise it struggled with the always defect strategy, as the agents training on the adaptive, spiteful and tit-for-tat strategies will have biased it's strategy for when an opponent has played \texttt{CC}. 
+the agent performed well against all the fixed strategies, except for the always cooperate strategy.
+
+It isn't a surprise it struggled with the always cooperate strategy, as the agents training on the adaptive, spiteful and tit-for-tat strategies will have biased it's strategy for when an opponent has played \texttt{CC}. 
 We can see this in the table\ref{tab:history_probabilities} representing the probability of the agent complying based on the opponent history.
 If the memory was increased, it would almost certainly be able to differentiate the always cooperate strategy from the others.
 
@@ -139,44 +152,18 @@ The agent had a average fitness of 135.71, when averaged over all the fixed stra
 For fun, for each fixed strategy, I trained an agent against only that specific strategy, and then had the best evolved agent play all of the other strategies.
 
 Some notable results: unsurprisingly, the \texttt{Always Cooperate} strategy performed well when it was tested against itself and the and \texttt{Always Defect} strategy, as it always was going to select the highest reward option, being always defect.
-It did hold it's own though against the two other strategies, came out on top against the other three strategies.
+With this, it held it's own though against the other strategies.
 
 The \texttt{Always Defect} strategy performed the worst, as it only knew what to do when the other agent defected twice in a row. 
-The only wins it had were when the other combinations were used and it happened to have a random value initialised that proved to be lucky.
+The only wins it had were when the other potential combinations were used (e.g. DC, CC) and it happened to have a random value initialised that proved to be lucky.
 
 
 The adaptive and tit for tat strategies are interesting to look at in how they performed.
 \texttt{Tit-for-Tat} was quite compliant, and matched equal scores, except for when it was confused by \texttt{Always Defect} (as it not had any training experience with repeated \texttt{DD}).
 \texttt{Adaptive Strategy} did well with \texttt{Always Cooperate}, but lost miserably out to \texttt{Always Defect}. Otherwise, it matched well for the other two tests.
 
-% Agent Score / Fixed Strategy Score
-% \subsubsection{Against other strategies}
-% \begin{table}[h!]
-%     \centering
-%     \begin{tabular}{|c|c|c|c|c|c|}
-%         \hline
-% 		\textbf{(Trained On)} & \multicolumn{5}{c|}{\textbf{Fixed Strategy (Tested On)}} \\ \hline
-%         \textbf{} & \textbf{Always Cooperate} & \textbf{Always Defect} & \textbf{Tit-for-Tat} & \textbf{Adaptive Strategy} & \textbf{Sum of Score} \\ \hline        
-%         \textbf{Always Cooperate} & 250 / 0 & 49 / 54 & 114 / 109 & 61 / 51 & 469\\ \hline
-%         \textbf{Always Defect} & 166 / 126 & 50 / 50 & 54 / 49 & 60 / 55 & 325\\ \hline
-%         \textbf{Tit-for-Tat} & 150 / 150 & 10 / 210 & 150 / 150 & 150 / 150 & 460\\ \hline
-%         \textbf{Adaptive Strategy} & 176 / 111 & 2 / 242 & 131 / 131 & 151 / 131 & 460\\ \hline
-%     \end{tabular}
-%     \caption{Agent performance against fixed strategies after training on different opponents}
-%     \label{tab:agent_vs_fixed_strats}
-% \end{table}
 
-
-
-
-% \begin{figure}[h!]
-% 	\centering
-% 	\includegraphics[width=0.8\linewidth]{convergence_example_.png}
-% 	\caption{Example of convergence over generations}
-% 	\label{fig:convergence_example}
-% \end{figure}
-%------------------------------------------------
-
+\newpage
 \section{Part 2: Extension}
 
 \textbf{Disclaimer:} 
@@ -184,29 +171,165 @@ I didn't read the assignment spec initially and actually made a much more comple
 Here is what I have changed:
 \begin{itemize}
 	\item Increased memory from 2 to 6.
-	\item Added noise.
-	\item 
+	\item Good Samaritan Award
+	\item Coevolution
 \end{itemize}
 
-\subsubsection{Experimentation setup}
-To evaluate the performance of the genetic algorithm (GA) for the travelling salesperson problem (TSP), I ran experiments on three different datasets: berlin52, kroA100, and pr1002.
+\subsubsection{Memory increase}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\linewidth]{Figures/part_2/extra_mem_gen.png}
+	\caption{Generalised agent with more memory against Tested On All Fixed Strategies}
+	\label{fig:extra_mem_gen_graph}
+\end{figure}
+
+I increased the memory from 2 to 6, as I wanted to see how the agent would perform with a larger memory.
+It had a big impact on the agents performance, as it was able to differentiate between strategies much better, and was able to respond to the \texttt{Always Cooperate} strategy much better, as it wasn't being confused by other strategies like the \texttt{Spiteful} or \texttt{Adaptive} strategies.
+It was able to differentiate between the \texttt{Always Cooperate} strategy and the
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+		\textbf{(Fixed Strategy)} & \textbf{Agent Score} & \textbf{Fixed Strat Score} \\ \hline
+        \textbf{Always Cooperate} & 248 & 3\\ \hline
+        \textbf{Always Defect} & 49 & 54 \\ \hline
+        \textbf{Tit-for-Tat} & 130 & 130 \\ \hline
+        \textbf{Adaptive Strategy} & 140 & 110 \\ \hline
+        \textbf{Spiteful Strategy} & 124 & 124 \\ \hline
+    \end{tabular}
+    \caption{Generalised agent with more memory, 100 generations}
+    \label{tab:gen_mem_agent_vs_fixed_strats}
+\end{table}
+
+\newpage
+\paragraph{Some notable pieces from the genome}
+We can see how the algorithm was able to differentiate what to play for the \texttt{Always Cooperate} strategy, 
+with a representation of \texttt{History: CCCCCC, Strategy Value: 0.0}, where it was always going to defect. This had it score 248, versus the 172 with the shorter memory.
+
+For example then, with the \texttt{Spiteful Strategy} having a higher chance of initially defecting with a 0.3 probability (spiteful doesn't take into account the first agent move), the agent has learnt that if it keeps it's nose clean, the spiteful algorithm will keep cooperating.
+At 5 moves, it has \texttt{History: DCCCC, Strategy Value: 0.91}, basically developing a strategy to try to keep working with spiteful, rather than have spiteful increase it's chance of defection (which spiteful will do for each agent defection).
+
+\vspace{12pt} % Add vertical space
+The first run \ref{tab:gen_mem_agent_vs_fixed_strats}, only had 100 generations to evolve with. 
+Interestingly, when I removed the early stopping condition and had the agent evolve for 300 generations, 
+it did not make any significant improvement, and performed worse in some instances - for example, against the spiteful algorithm.
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+		\textbf{(Fixed Strategy)} & \textbf{Agent Score} & \textbf{Fixed Strat Score} \\ \hline
+        \textbf{Always Cooperate} & 244 & 9\\ \hline
+        \textbf{Always Defect} & 50 & 50 \\ \hline
+        \textbf{Tit-for-Tat} & 138 & 133 \\ \hline
+        \textbf{Adaptive Strategy} & 157 & 102 \\ \hline
+        \textbf{Spiteful Strategy} & 91 & 126 \\ \hline
+    \end{tabular}
+    \caption{Generalised agent, more memory, 300 generations of evolution.}
+    \label{tab:300_gen_mem_agent_vs_fixed_strats}
+\end{table}
+
+\subsection{Good Samaritan Award}
+I added an award to the agent, that will reward it with the \texttt{num\_round x 3.5} of the score, if it only has only cooperated on every turn.
+This would also happen in only 55\% of the cases.
+
+This means, it will have it will have the slightly better than the max possible reward.
+I did this, as I was interested in what would the agent do, and how the diversity would hold up.
 
 
-\subsubsection{Best crossover method}
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{Figures/part_2/good_samaritan/plot_2025-03-11 19-31-27_0.png}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{Figures/part_2/good_samaritan/plot_2025-03-11 19-31-27_1.png}
+    \end{minipage}
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{Figures/part_2/good_samaritan/plot_2025-03-11 19-31-27_2.png}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{Figures/part_2/good_samaritan/plot_2025-03-11 19-31-27_3.png}
+    \end{minipage}
+	\caption{Good Samaritan Award Testing}
+	\label{fig:good_samaritan_award}
+\end{figure}
 
-\subsubsection{Best mutation method}
-n 
-\subsubsection{Best parameters}
+With the good samaritan configuration, I evolved the agent for 300 generations, with a memory of 6.
+As you can see in the above figure \ref{fig:good_samaritan_award}, from 4 runs, twice did the agent evolve to find the higher reward system, and twice did it actually find it, but then evolve to not take advantage of it.
 
-\section{Comparison with known optimal solutions}
-\label{Comparison with known optimal solutions}
+Additionally you can also see where the agent found the higher reward system, accidentally evolved to not take advantage of it, but quickly re-evolved to take advantage of it again.
 
-
-
-\section{Potential improvements}
-\label{Potential improvements}
+The diversity score of the populations isn't noticably any different to other runs without this 'good samaritan' award, where as per usual, the diversity converges at around generation 40.
+From this, the reward system is a highly divise factor in the population, and the agent will either quickly adapt to it or shun it.
 
 
+\section{Coevolution}
+With the two other enhancements, I wanted to see how the agent would perform in a coevolutionary setting.
+
+I firstly ran the coevolutionary training with just the increased memory, where it initially plunges in performance, but slowly recovers back to a reasonable score.
+As the agent irons out the random noise in it's initial population, it starts to perform better where it will sometimes give itself a higher reward (by accident probably), which is worth more than just continually defecting.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\linewidth]{Figures/part_2/no_good_sam_coev/300.png}
+	\caption{Coevolutionary training with increased memory}
+	\label{fig:300_gen_mem_coev}
+\end{figure}
+
+I then ran the coevolutionary training with the good samaritan award, and the increased memory.
+The agents did not engage with the good samaritan award with it's initial implementation at all.
+
+I removed the probability element, awarding it everytime that the agent had a run with no more than 3 defections. This still had little impact, so I decreased the round count from 50 to 15.
+
+Only then did the agents start to engage with the good samaritan award.
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{Figures/part_2/goodSamC1.png}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{Figures/part_2/goodSamC22.png}
+    \end{minipage}
+	\begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{Figures/part_2/goodSamC3.png}
+    \end{minipage}
+	\label{fig:coev_good_samaritan_award}
+	\caption{Coevolutionary training with good samaritan award}
+\end{figure}
+
+Even after all the changes, the agents still usually didn't engage with the good samaritan award on every run, and would evolve away from an initial position of achieving it for around 10 generations.
+
+I guess from this, my agents are just too selfish to be good samaritans ;)
+
+\subsection{Coevolution against each other}
+%  Total scores: {<__main__.IPDGenotype object at 0x118480250>: 318, <__main__.IPDGenotype object at 0x1187a54f0>: 298, <__main__.IPDGenotype object at 0x11889db50>: 321, <__main__.IPDGenotype object at 0x1189a2700>: 321, <__main__.IPDGenotype object at 0x118a82310>: 314}
+Running without all the good samaritan changes, I pitted 5 coevolutionary agents against each other.
+Surprisingly, I found that the agents did not just always defect against one anohter, and had quite close scores.
+The agents were able to find a balance between defecting and cooperating, resulting in higher payoffs overall and not just getting the worst score from both defecting.
+The scores in order of the agents were: 321, 321, 318, 314, 298.
+
+\section{Conclusion}
+
+
+I had good fun with this mini project.
+
+Coevolutionary training was interesting, as it was able to find a balance between themselves to result in higher payoffs, even if it meant losing out to itself for the odd turn.
+
+The effects of the memory size difference also were insightful, as it opened up a lot more nuanced strategies.
+If I had more time, I would have liked to have seen how the agents would have performed with an awareness of it's own moves, and not just the opponents.
+(although, you will have to make sure the memory doesn't become too large, as it will scale really badly with the number of possible history permutations). This does lead into an idea space that basically is one of using a neural network to approximate the strategy, (which would be interesting in it's own right).
+
+% \section{Potential improvements}
+% \label{Potential improvements}
 
 
 % One easy, improvment I believe for my algorithm would be to employ elitism.
